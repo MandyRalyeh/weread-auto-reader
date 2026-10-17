@@ -2,6 +2,7 @@
 
 [![Version](https://img.shields.io/badge/version-v1.9.0-blue.svg)](https://github.com/MandyWednesday/weread-auto-reader)
 [![Platform](https://img.shields.io/badge/platform-Tampermonkey-green.svg)](https://www.tampermonkey.net/)
+[![Greasy Fork](https://img.shields.io/badge/Greasy%20Fork-安装脚本-red.svg)](https://greasyfork.org/zh-CN/scripts/600765-%E5%BE%AE%E4%BF%A1%E8%AF%BB%E4%B9%A6%E7%BD%91%E9%A1%B5%E7%89%88-%E5%90%8E%E5%8F%B0%E6%97%A0%E6%84%9F%E8%87%AA%E5%8A%A8%E7%BF%BB%E9%A1%B5%E5%88%B7%E6%97%B6%E9%95%BF)
 [![License](https://img.shields.io/badge/license-MIT-orange.svg)](LICENSE)
 
 这是我使用 Antigravity 辅助开发的一个微信读书网页版（[weread.qq.com](https://weread.qq.com/)）自动翻页油猴脚本，主要用于自动化挂机阅读与时长累计。
@@ -60,6 +61,11 @@
 
 ## 安装与使用
 
+### 方式一：Greasy Fork 一键安装（推荐）
+如果你已经安装了 Tampermonkey，可以直接前往官方脚本页一键安装：
+👉 **[Greasy Fork 脚本安装页面](https://greasyfork.org/zh-CN/scripts/600765-%E5%BE%AE%E4%BF%A1%E8%AF%BB%E4%B9%A6%E7%BD%91%E9%A1%B5%E7%89%88-%E5%90%8E%E5%8F%B0%E6%97%A0%E6%84%9F%E8%87%AA%E5%8A%A8%E7%BF%BB%E9%A1%B5%E5%88%B7%E6%97%B6%E9%95%BF)**（点击绿色的“安装此脚本”即可）。
+
+### 方式二：手动导入
 1. 在浏览器中安装脚本管理器扩展（如 [Tampermonkey](https://www.tampermonkey.net/)）；
 2. 打开油猴扩展管理面板，点击“添加新脚本”；
 3. 将本项目中的 [`weread_auto_reader.user.js`](weread_auto_reader.user.js) 源码完整复制并保存；
