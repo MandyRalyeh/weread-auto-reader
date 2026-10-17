@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         微信读书网页版 - 后台无感自动翻页刷时长
 // @namespace    https://weread.qq.com/
-// @version      1.9.1
-// @description  专为副屏挂机刷阅读时长设计：修复预加载 DOM 导致的翻页即循环 bug、严格物理视口几何检测+双重延时复核、开局安全翻页缓冲屏障、全书完精准直跳首章（无限循环）、物理时钟对齐绝不缩水、静音音频防后台节流、精准单页翻页、跨刷新累计总时长、自动监控重试“加载失败”、定时整页刷新防卡死。
+// @version      1.10.0
+// @description  专为副屏挂机刷阅读时长设计：全网书籍通用循环、严格物理几何视口核验杜绝预加载误判、双重延时物理复核、首章动态记忆与原生目录重定向、物理时钟对齐绝不缩水、静音音频防后台节流、精准单页翻页、跨刷新累计总时长、自动监控重试“加载失败”、定时整页刷新防卡死。
 // @author       Mandy
 // @license      MIT
 // @match        https://weread.qq.com/*
@@ -13,16 +13,15 @@
 (function() {
     'use strict';
 
-    const SCRIPT_VERSION = 'v1.9.1';
-    console.log(`[微信读书助手 ${SCRIPT_VERSION}] 物理几何视口核验+防误判开局屏障版已加载！当前页面:`, location.href);
+    const SCRIPT_VERSION = 'v1.10.0';
+    console.log(`[微信读书助手 ${SCRIPT_VERSION}] 全书库通用适配+视口物理几何核验版已加载！当前页面:`, location.href);
 
     // ================= 配置参数 =================
     const CONFIG = {
         minDelay: 25,              // 每次翻页最小间隔（秒）
         maxDelay: 45,              // 每次翻页最大间隔（秒）
         autoStart: true,           // 进入阅读器是否自动开始
-        autoReloadMinutes: 90,     // 定时自动刷新页面周期（分钟），防假死与内存泄漏
-        minLoopPagesBuffer: 20     // 本轮翻页安全防线：翻页少于 20 页绝不判定为全书完
+        autoReloadMinutes: 90      // 定时自动刷新页面周期（分钟），防假死与内存泄漏
     };
 
     // ================= 持久化存储管理 (localStorage) =================
@@ -155,26 +154,21 @@
 
     // 判断当前页面是否处于“真实的、屏幕上可见的全书完结页”
     function isEndOfBook() {
-        // 防线 1：当前轮次若翻页不足安全阈值（如20页），绝不可能是数百万字的全书完（彻底消灭刚开局误判）
-        if (pagesInCurrentLoop < CONFIG.minLoopPagesBuffer) {
-            return false;
-        }
-
         // 寻找读完结语卡片（在微信读书中，封底位于 .readerFooter_ending 或 .horizontal_reader_back_cover_wrapper 内）
-        const endingCards = document.querySelectorAll('.readerFooter_ending, .horizontal_reader_back_cover_wrapper .readerFooter_ending');
+        const endingCards = document.querySelectorAll('.readerFooter_ending, .horizontal_reader_back_cover_wrapper .readerFooter_ending, .horizontal_reader_back_cover, .readerFooter');
         for (const ending of endingCards) {
-            // 防线 2：必须有真实的 offsetParent（排除处于 display:none 或祖先隐藏容器中的元素）
+            // 防线 1：必须有真实的 offsetParent（排除处于 display:none 或祖先隐藏容器中的元素）
             if (ending.offsetParent === null) continue;
 
-            // 防线 3：物理渲染尺寸检查（排除未排版或尺寸为 0 的幽灵元素）
+            // 防线 2：物理渲染尺寸检查（排除未排版或尺寸为 0 的幽灵元素）
             const rect = ending.getBoundingClientRect();
             if (rect.width < 50 || rect.height < 50) continue;
 
-            // 防线 4：屏幕视口几何检查（必须完全落入屏幕当前可视窗口，排除屏幕外负坐标或超视口元素）
+            // 防线 3：屏幕视口几何检查（必须完全落入屏幕当前可视窗口，排除屏幕外负坐标或超视口元素）
             if (rect.bottom < 0 || rect.top > window.innerHeight) continue;
             if (rect.right < 0 || rect.left > window.innerWidth) continue;
 
-            // 防线 5：横屏封底组件显隐检查（必须没有被 v-show 隐藏）
+            // 防线 4：横屏封底组件显隐检查（必须没有被 v-show 隐藏）
             const wrapper = ending.closest('.horizontal_reader_back_cover_wrapper');
             if (wrapper) {
                 const wrapperStyle = window.getComputedStyle(wrapper);
@@ -185,13 +179,13 @@
                 if (wrapperRect.width < 100 || wrapperRect.height < 100) continue;
             }
 
-            // 防线 6：文案严格核验，必须为明确的全书完结标题，且严格剔除“未读完”
+            // 防线 5：文案严格核验，必须为明确的全书完结标题，且严格剔除“未读完”
             const titleEl = ending.querySelector('.readerFooter_ending_title');
             const text = (titleEl ? titleEl.innerText : ending.innerText || '').replace(/\s+/g, '');
             if (text.includes('未读完全书') || text.includes('未读完')) {
                 continue;
             }
-            if (text.includes('全书完') || text.includes('已读完全书') || text.includes('读完了') || text.includes('本书已读完')) {
+            if (text.includes('全书完') || text.includes('已读完全书') || text.includes('已读完') || text.includes('读完了') || text.includes('本书已读完') || text.includes('读完全书')) {
                 console.log('[微信读书助手] 🎯 捕获真实屏幕可见的完结卡片:', text, rect);
                 return true;
             }
@@ -372,6 +366,11 @@
     // ================= 3. 调度下次翻页（基于绝对时间戳 Date.now()） =================
     function scheduleNext() {
         if (!isRunning || isLoopingBack || isVerifyingEnd) return;
+        if (isEndOfBook()) {
+            console.log('[微信读书助手] 🎯 检测到当前已处于末页，立即启动全书完结复核...');
+            checkEndOfBook();
+            return;
+        }
         const delaySec = Math.floor(Math.random() * (CONFIG.maxDelay - CONFIG.minDelay + 1)) + CONFIG.minDelay;
         targetTurnTimestamp = Date.now() + (delaySec * 1000);
         updateUI();
@@ -384,7 +383,14 @@
         localStorage.setItem(STORAGE_KEYS.IS_RUNNING, 'true');
 
         lastTickTimestamp = Date.now();
-        scheduleNext();
+        updateUI();
+
+        if (isEndOfBook()) {
+            console.log('[微信读书助手] 🎯 启动时即处于末页，直接触发完结复核...');
+            checkEndOfBook();
+        } else {
+            scheduleNext();
+        }
 
         clearInterval(mainLoopTimer);
         mainLoopTimer = setInterval(() => {

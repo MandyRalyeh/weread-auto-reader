@@ -1,11 +1,12 @@
 # WeRead Auto Reader (微信读书网页版自动翻页助手)
 
-[![Version](https://img.shields.io/badge/version-v1.9.1-blue.svg)](https://github.com/MandyWednesday/weread-auto-reader)
+[![Version](https://img.shields.io/badge/version-v1.10.0-blue.svg)](https://github.com/MandyWednesday/weread-auto-reader)
 [![Platform](https://img.shields.io/badge/platform-Tampermonkey-green.svg)](https://www.tampermonkey.net/)
 [![Greasy Fork](https://img.shields.io/badge/Greasy%20Fork-安装脚本-red.svg)](https://greasyfork.org/zh-CN/scripts/600765-%E5%BE%AE%E4%BF%A1%E8%AF%BB%E4%B9%A6%E7%BD%91%E9%A1%B5%E7%89%88-%E5%90%8E%E5%8F%B0%E6%97%A0%E6%84%9F%E8%87%AA%E5%8A%A8%E7%BF%BB%E9%A1%B5%E5%88%B7%E6%97%B6%E9%95%BF)
 [![License](https://img.shields.io/badge/license-MIT-orange.svg)](LICENSE)
+[![Changelog](https://img.shields.io/badge/changelog-CHANGELOG.md-lightgrey.svg)](CHANGELOG.md)
 
-这是我使用 Antigravity 辅助开发的一个微信读书网页版（[weread.qq.com](https://weread.qq.com/)）自动翻页油猴脚本，主要用于自动化挂机阅读与时长累计。
+这是我使用 Antigravity 辅助开发的一个微信读书网页版（[weread.qq.com](https://weread.qq.com/)）自动翻页油猴脚本，主要用于自动化挂机阅读与时长累计。详细演进历史请查阅 [CHANGELOG.md](CHANGELOG.md)。
 
 ---
 
