@@ -3,7 +3,8 @@
 // @namespace    https://weread.qq.com/
 // @version      1.9.0
 // @description  专为副屏挂机刷阅读时长设计：修复预加载 DOM 导致的翻页即循环 bug、严格物理视口几何检测+双重延时复核、开局安全翻页缓冲屏障、全书完精准直跳首章（无限循环）、物理时钟对齐绝不缩水、静音音频防后台节流、精准单页翻页、跨刷新累计总时长、自动监控重试“加载失败”、定时整页刷新防卡死。
-// @author       Antigravity
+// @author       Mandy
+// @license      MIT
 // @match        https://weread.qq.com/*
 // @grant        none
 // @run-at       document-idle
