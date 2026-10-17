@@ -60,7 +60,7 @@
     let isFlipping = false;        // 严格防抖锁：确保每次绝对只翻 1 页
     let isLoopingBack = false;     // 跳转回首章中状态
     let isVerifyingEnd = false;    // 末页双重复核确认中状态
-    let pagesInCurrentLoop = 0;    // 本轮已翻页数（安全屏障，防止开局误判）
+    let pagesInCurrentLoop = 0;    // 本轮已翻页数统计
     let uiContainer = null;
 
     // 格式化时间为：X小时 Y分 Z秒
