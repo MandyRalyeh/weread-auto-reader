@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         微信读书网页版 - 后台无感自动翻页刷时长
 // @namespace    https://weread.qq.com/
-// @version      1.9.0
+// @version      1.9.1
 // @description  专为副屏挂机刷阅读时长设计：修复预加载 DOM 导致的翻页即循环 bug、严格物理视口几何检测+双重延时复核、开局安全翻页缓冲屏障、全书完精准直跳首章（无限循环）、物理时钟对齐绝不缩水、静音音频防后台节流、精准单页翻页、跨刷新累计总时长、自动监控重试“加载失败”、定时整页刷新防卡死。
 // @author       Mandy
 // @license      MIT
@@ -13,7 +13,7 @@
 (function() {
     'use strict';
 
-    const SCRIPT_VERSION = 'v1.9.0';
+    const SCRIPT_VERSION = 'v1.9.1';
     console.log(`[微信读书助手 ${SCRIPT_VERSION}] 物理几何视口核验+防误判开局屏障版已加载！当前页面:`, location.href);
 
     // ================= 配置参数 =================
@@ -23,11 +23,6 @@
         autoStart: true,           // 进入阅读器是否自动开始
         autoReloadMinutes: 90,     // 定时自动刷新页面周期（分钟），防假死与内存泄漏
         minLoopPagesBuffer: 20     // 本轮翻页安全防线：翻页少于 20 页绝不判定为全书完
-    };
-
-    // 已知大型书籍的首章哈希库（托尔金中洲七部曲第一卷魔戒）
-    const KNOWN_FIRST_CHAPTERS = {
-        '23942593643425f384e52415a6841576438375137334d37313435395344346c0af': 'kb6d32b90216b6d767d2f0dc'
     };
 
     // ================= 持久化存储管理 (localStorage) =================
@@ -79,17 +74,36 @@
         return `${s}秒`;
     }
 
-    // 自动记录当前书籍的第一章地址（用于全书完后无缝直跳）
+    // 解析当前阅读器 URL 中的书籍 ID 与章节哈希（通用适配所有图书）
+    function parseReaderUrl(url = location.href) {
+        const m = url.match(/\/web\/reader\/(.+?)(k[a-zA-Z0-9]+)$/);
+        if (m) {
+            return { bookId: m[1], chapterHash: m[2] };
+        }
+        const m2 = url.match(/\/web\/reader\/([a-zA-Z0-9_]+)/);
+        if (m2) {
+            return { bookId: m2[1], chapterHash: '' };
+        }
+        return { bookId: '', chapterHash: '' };
+    }
+
+    // 自动记录当前书籍的起点与首章地址（用于全书完后无缝直跳）
     function cacheCurrentChapterIfEarly() {
-        const m = location.href.match(/\/web\/reader\/([a-zA-Z0-9_]+)(k[a-zA-Z0-9]+)?/);
-        if (!m) return;
-        const bookId = m[1];
-        const chapterHash = m[2];
-        if (chapterHash) {
-            const cacheKey = 'weread_first_chapter_' + bookId;
-            if (!localStorage.getItem(cacheKey) && !isEndOfBook()) {
-                localStorage.setItem(cacheKey, chapterHash);
-                console.log('[微信读书助手] 🔖 已记住本书首章哈希:', chapterHash);
+        const { bookId, chapterHash } = parseReaderUrl();
+        if (!bookId) return;
+
+        // 若处于单轮开局前 5 页且非末页，将当前 URL 与章节记录为起点
+        if (pagesInCurrentLoop <= 5 && !isEndOfBook()) {
+            const startUrlKey = 'weread_start_url_' + bookId;
+            if (!localStorage.getItem(startUrlKey)) {
+                localStorage.setItem(startUrlKey, location.href);
+            }
+            if (chapterHash) {
+                const cacheKey = 'weread_first_chapter_' + bookId;
+                if (!localStorage.getItem(cacheKey)) {
+                    localStorage.setItem(cacheKey, chapterHash);
+                    console.log('[微信读书助手] 🔖 已记住本书首章哈希:', chapterHash);
+                }
             }
         }
     }
@@ -228,7 +242,7 @@
         if (callback) callback(false);
     }
 
-    // 核心跳转函数：结合 DOM 模拟与底层路由直跳，确保 100% 成功回到第一章
+    // 核心跳转函数：结合 DOM 模拟与底层路由直跳，确保 100% 成功回到第一章（全书库通用）
     function triggerLoopToBeginning() {
         if (isLoopingBack) return;
         isLoopingBack = true;
@@ -236,13 +250,12 @@
         updateNotice('🎉 确认全书已读完！正在自动返回第一章重新循环...');
         console.log('[微信读书助手] 启动全书重置流程...');
 
-        const m = location.href.match(/\/web\/reader\/([a-zA-Z0-9_]+)/);
-        const bookId = m ? m[1] : '';
-        const firstChapterHash = (bookId && KNOWN_FIRST_CHAPTERS[bookId]) ||
-                                (bookId && localStorage.getItem('weread_first_chapter_' + bookId)) ||
-                                'kb6d32b90216b6d767d2f0dc';
+        const { bookId } = parseReaderUrl();
+        const cachedHash = (bookId && localStorage.getItem('weread_first_chapter_' + bookId)) || '';
+        const cachedStartUrl = (bookId && localStorage.getItem('weread_start_url_' + bookId)) || '';
 
-        const targetUrl = `https://weread.qq.com/web/reader/${bookId}${firstChapterHash}`;
+        // 最终兜底 URL：优先使用记录的起点 URL，次优拼接首章哈希，最后回退基础阅读路由（通用适配任意书籍）
+        const targetUrl = cachedStartUrl || (bookId ? (cachedHash ? `https://weread.qq.com/web/reader/${bookId}${cachedHash}` : `https://weread.qq.com/web/reader/${bookId}`) : location.href);
 
         // 尝试通过目录原生跳转
         const catalogBtn = getCatalogButton();
@@ -267,7 +280,7 @@
             localStorage.setItem(STORAGE_KEYS.LOOP_COUNT, loopCount);
 
             if (isEndOfBook()) {
-                console.log('[微信读书助手] 🚀 执行底层路由无感重定向至第 1 章:', targetUrl);
+                console.log('[微信读书助手] 🚀 执行底层路由无感重定向至首章:', targetUrl);
                 location.replace(targetUrl);
             } else {
                 console.log('[微信读书助手] 🎯 验证成功！已回到第一章正文，进入新一轮阅读。');
@@ -614,6 +627,7 @@
             } else {
                 uiContainer.style.display = 'block';
             }
+            cacheCurrentChapterIfEarly();
             if (!isRunning && CONFIG.autoStart) {
                 start();
             }
