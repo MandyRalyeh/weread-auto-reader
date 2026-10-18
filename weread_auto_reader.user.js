@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         微信读书网页版 - 后台无感自动翻页刷时长
 // @namespace    https://weread.qq.com/
-// @version      1.10.0
-// @description  专为副屏挂机刷阅读时长设计：全网书籍通用循环、严格物理几何视口核验杜绝预加载误判、双重延时物理复核、首章动态记忆与原生目录重定向、物理时钟对齐绝不缩水、静音音频防后台节流、精准单页翻页、跨刷新累计总时长、自动监控重试“加载失败”、定时整页刷新防卡死。
+// @version      1.10.1
+// @description  专为副屏挂机刷阅读时长设计：全网书籍通用循环、严格物理几何视口核验杜绝预加载误判、双重延时物理复核、首章动态记忆与原生目录重定向、物理时钟对齐绝不缩水、静音音频防后台节流、精准单页翻页、跨刷新累计总时长与本轮页数、自动监控重试“加载失败”、定时整页刷新防卡死。
 // @author       Mandy
 // @license      MIT
 // @match        https://weread.qq.com/*
@@ -13,7 +13,7 @@
 (function() {
     'use strict';
 
-    const SCRIPT_VERSION = 'v1.10.0';
+    const SCRIPT_VERSION = 'v1.10.1';
     console.log(`[微信读书助手 ${SCRIPT_VERSION}] 全书库通用适配+视口物理几何核验版已加载！当前页面:`, location.href);
 
     // ================= 配置参数 =================
@@ -29,6 +29,7 @@
         TOTAL_SECONDS: 'weread_auto_total_seconds',
         TOTAL_PAGES: 'weread_auto_total_pages',
         LOOP_COUNT: 'weread_auto_loop_count',
+        PAGES_IN_LOOP: 'weread_auto_pages_in_loop',
         LAST_RELOAD: 'weread_auto_last_reload',
         IS_RUNNING: 'weread_auto_is_running',
         CLEANED_V190: 'weread_auto_cleaned_v190'
@@ -42,6 +43,7 @@
     let totalSeconds = getStorageInt(STORAGE_KEYS.TOTAL_SECONDS, 0);
     let totalPages = getStorageInt(STORAGE_KEYS.TOTAL_PAGES, 0);
     let loopCount = getStorageInt(STORAGE_KEYS.LOOP_COUNT, 1);
+    let pagesInCurrentLoop = getStorageInt(STORAGE_KEYS.PAGES_IN_LOOP, 0);
     let lastReloadTime = getStorageInt(STORAGE_KEYS.LAST_RELOAD, Date.now());
 
     // 升级 v1.9.0 时自动重置此前误触发虚增的轮次数（校准回第 1 轮，累计总时长与总页数完好保留）
@@ -60,7 +62,6 @@
     let isFlipping = false;        // 严格防抖锁：确保每次绝对只翻 1 页
     let isLoopingBack = false;     // 跳转回首章中状态
     let isVerifyingEnd = false;    // 末页双重复核确认中状态
-    let pagesInCurrentLoop = 0;    // 本轮已翻页数统计
     let uiContainer = null;
 
     // 格式化时间为：X小时 Y分 Z秒
@@ -272,6 +273,7 @@
             loopCount++;
             pagesInCurrentLoop = 0;
             localStorage.setItem(STORAGE_KEYS.LOOP_COUNT, loopCount);
+            localStorage.setItem(STORAGE_KEYS.PAGES_IN_LOOP, '0');
 
             if (isEndOfBook()) {
                 console.log('[微信读书助手] 🚀 执行底层路由无感重定向至首章:', targetUrl);
@@ -352,6 +354,7 @@
         totalPages++;
         pagesInCurrentLoop++;
         localStorage.setItem(STORAGE_KEYS.TOTAL_PAGES, totalPages);
+        localStorage.setItem(STORAGE_KEYS.PAGES_IN_LOOP, pagesInCurrentLoop);
         updateUI();
 
         cacheCurrentChapterIfEarly();
@@ -440,6 +443,7 @@
             localStorage.setItem(STORAGE_KEYS.TOTAL_SECONDS, '0');
             localStorage.setItem(STORAGE_KEYS.TOTAL_PAGES, '0');
             localStorage.setItem(STORAGE_KEYS.LOOP_COUNT, '1');
+            localStorage.setItem(STORAGE_KEYS.PAGES_IN_LOOP, '0');
             updateUI();
         }
     }
@@ -480,6 +484,7 @@
             localStorage.setItem(STORAGE_KEYS.TOTAL_SECONDS, totalSeconds);
             localStorage.setItem(STORAGE_KEYS.TOTAL_PAGES, totalPages);
             localStorage.setItem(STORAGE_KEYS.LOOP_COUNT, loopCount);
+            localStorage.setItem(STORAGE_KEYS.PAGES_IN_LOOP, pagesInCurrentLoop);
             location.reload();
         }
     }
@@ -634,7 +639,9 @@
                 uiContainer.style.display = 'block';
             }
             cacheCurrentChapterIfEarly();
-            if (!isRunning && CONFIG.autoStart) {
+            const savedRunning = localStorage.getItem(STORAGE_KEYS.IS_RUNNING);
+            const shouldStart = savedRunning !== null ? (savedRunning === 'true') : CONFIG.autoStart;
+            if (!isRunning && shouldStart) {
                 start();
             }
         } else {
